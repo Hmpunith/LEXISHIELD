@@ -108,20 +108,6 @@ npm run test:coverage
 
 ---
 
-## 🎬 Automated Scripted Demo Video
-
-LexiShield includes a fully automated video recording pipeline in `video-generator/`:
-- **Neural Narration**: Python script using `edge-tts` (`en-US-ChristopherNeural`) synthesizing voiceover for 6 key scenes.
-- **Automated Interaction**: Playwright script navigating the UI with human-like bezier curve mouse movement and live text input.
-- **FFmpeg Compilation**: Stitches 1080p frames and neural audio into `lexishield_demo.mp4` under 4 minutes.
-
-```bash
-cd video-generator
-powershell -ExecutionPolicy Bypass -File build.ps1
-```
-
----
-
 ## 🚀 Quickstart & Deployment
 
 ### Local Development
@@ -150,3 +136,4 @@ vercel deploy --prod
 
 ## ⚖️ License
 Distributed under the MIT License. Built for the PromptWars AI for Legal Assistance & Access Challenge.
+

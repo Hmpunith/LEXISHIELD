@@ -41,3 +41,6 @@ video-generator/assets/concat.txt
 video-generator/ffmpeg*
 *.mp4
 *.webm
+
+# Video Generator tool (local only)
+video-generator/
