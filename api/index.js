@@ -1009,9 +1009,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
     console.info(`\u{1F6E1}\uFE0F [LexiShield Server] Running at http://localhost:${PORT}`);
   });
 }
-
-// api/index.ts
-var index_default = app_default;
 export {
-  index_default as default
+  createServerApp,
+  app_default as default
 };

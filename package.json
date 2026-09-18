@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/app.ts",
-    "build": "tsc && vite build && esbuild api/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=api/index.js --packages=external",
+    "build": "tsc && vite build && esbuild server/app.ts --bundle --platform=node --format=esm --target=node20 --outfile=api/index.js --packages=external",
     "start": "node dist/server/app.js",
     "test": "vitest run",
     "test:watch": "vitest",
