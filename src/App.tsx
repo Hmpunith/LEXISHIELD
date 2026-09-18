@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Navbar, NavTab } from './components/shell/Navbar';
 import { Footer } from './components/shell/Footer';
 import { SkipLink } from './components/shell/SkipLink';
@@ -94,7 +94,7 @@ export function App() {
             <div className="text-center space-y-3 pt-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold">
                 <Shield className="w-3.5 h-3.5" />
-                PromptWars Legal Access & Assistance Edition
+                Autonomous Contract Risk Intelligence & Self-Advocacy
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
                 Demystify Complex Contracts with <span className="text-brand-400">AI Risk Intelligence</span>
