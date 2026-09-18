@@ -1,5 +1,5 @@
-ï»¿import React from 'react';
-import { Shield, ExternalLink, Lock } from 'lucide-react';
+import React from 'react';
+import { Shield, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -21,7 +21,7 @@ export const Footer: React.FC = () => {
           </p>
           <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Operational Â· In-Memory Fast Engine Active</span>
+            <span>Operational · In-Memory Fast Engine Active</span>
           </div>
         </div>
 
@@ -51,7 +51,7 @@ export const Footer: React.FC = () => {
 
       {/* Bottom Bar: Copyright & Legal Disclaimer */}
       <div className="max-w-7xl mx-auto pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-        <p>Â© {new Date().getFullYear()} LexiShield Systems. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} LexiShield Systems. All rights reserved.</p>
         <p className="text-center sm:text-right max-w-xl text-[11px] text-slate-400">
           <strong>Notice:</strong> LexiShield is an informational self-advocacy and document review aid. It does not provide legal advice, legal representation, or attorney-client privilege.
         </p>

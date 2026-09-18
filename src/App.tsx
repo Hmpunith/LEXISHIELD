@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Navbar, NavTab } from './components/shell/Navbar';
 import { Footer } from './components/shell/Footer';
 import { SkipLink } from './components/shell/SkipLink';
@@ -13,7 +13,7 @@ import { ContractCompare } from './components/compare/ContractCompare';
 import { ComplianceChecklist } from './components/prep/ComplianceChecklist';
 import { AttorneyBriefView } from './components/prep/AttorneyBriefView';
 import { AuditReport, AuditedClause, DocumentType } from '../server/types/legal';
-import { Shield, Sparkles, Filter } from 'lucide-react';
+import { Shield, Sparkles, Filter, RotateCcw } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('audit');
@@ -72,35 +72,35 @@ export function App() {
   }) || [];
 
   return (
-    <div className="min-h-screen flex flex-col bg-navy-950 text-slate-100 selection:bg-brand-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#07090E] text-slate-100 selection:bg-cyan-500 selection:text-white">
       {/* WCAG Accessible Skip Link */}
       <SkipLink />
 
-      {/* Prominent Legal Disclaimer Banner */}
+      {/* Legal Disclaimer Top Bar */}
       <DisclaimerBanner />
 
-      {/* Semantic Accessible Header & Navbar */}
+      {/* Sleek Floating Glass Navbar */}
       <Navbar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         hasAnalyzedDoc={Boolean(report)}
       />
 
-      {/* Main Content Landmark */}
+      {/* Main Content Workspace */}
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 focus:outline-none">
-        {/* Document Ingestion Zone */}
+        {/* Pre-Audit Ingestion Studio */}
         {!report && !isLoading && (
-          <div className="space-y-8 max-w-4xl mx-auto">
-            <div className="text-center space-y-3 pt-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold">
+          <div className="space-y-8 max-w-4xl mx-auto pt-2">
+            <div className="text-center space-y-3.5">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold shadow-sm">
                 <Shield className="w-3.5 h-3.5" />
                 Autonomous Contract Risk Intelligence & Self-Advocacy
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
-                Demystify Complex Contracts with <span className="text-brand-400">AI Risk Intelligence</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                Demystify Complex Contracts with <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400">AI Risk Intelligence</span>
               </h1>
               <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-                Scan agreements against market benchmarks, detect predatory liabilities, generate negotiation counter-drafts, and ask questions grounded directly in your legal text.
+                Scan agreements against established market benchmarks, uncover hidden liabilities, generate ready-to-send negotiation counter-drafts, and ask grounded questions directly to your contract.
               </p>
             </div>
 
@@ -108,42 +108,67 @@ export function App() {
           </div>
         )}
 
-        {/* Loading Spinner with Accessible Status */}
+        {/* Accessible Loading State */}
         {isLoading && <LoadingState />}
 
-        {/* Post-Audit Dashboard */}
+        {/* Post-Audit Command Dashboard */}
         {report && !isLoading && (
-          <div className="space-y-8">
-            {/* Top Document Status & Score Banner */}
-            <div className="bg-navy-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-1">
+          <div className="space-y-7">
+            {/* Top Command Bar: Document Overview & Fairness Index Gauge */}
+            <div className="stitch-glass rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 border-slate-700/50">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase font-mono font-bold bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded">
+                  <span className="text-xs uppercase font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
                     {report.documentType.replace('_', ' ')}
                   </span>
                   <span className="text-xs text-slate-400 font-mono">{report.clauseCount} clauses indexed</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{report.filename}</h2>
                 <p className="text-xs text-slate-400">
-                  Benchmarked against ABA, URLTA, and Commercial Tech Standards.
+                  Benchmarked against American Bar Association (ABA), URLTA, and Commercial Tech Standards.
                 </p>
               </div>
 
-              {/* Overall Health Score Card */}
-              <div className="flex items-center gap-4 bg-navy-950 p-4 rounded-xl border border-slate-800 shrink-0">
-                <div className="text-center">
-                  <div
-                    className={`text-3xl font-black ${
-                      report.overallScore >= 75
-                        ? 'text-emerald-400'
-                        : report.overallScore >= 50
-                        ? 'text-amber-400'
-                        : 'text-rose-400'
-                    }`}
-                  >
-                    {report.overallScore}/100
+              {/* High-Fidelity Score Card with Circular Gauge */}
+              <div className="flex items-center gap-5 bg-slate-950/80 p-4 rounded-xl border border-slate-800 shrink-0">
+                <div className="flex items-center gap-3.5">
+                  {/* Circular SVG Gauge */}
+                  <div className="relative w-14 h-14 flex items-center justify-center">
+                    <svg className="w-14 h-14 -rotate-90" viewBox="0 0 36 36">
+                      <path
+                        className="text-slate-800"
+                        strokeWidth="3.5"
+                        stroke="currentColor"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path
+                        className={
+                          report.overallScore >= 75
+                            ? 'text-emerald-400'
+                            : report.overallScore >= 50
+                            ? 'text-amber-400'
+                            : 'text-rose-400'
+                        }
+                        strokeDasharray={`${report.overallScore}, 100`}
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                    </svg>
+                    <span className="absolute text-sm font-black text-white font-mono">
+                      {report.overallScore}
+                    </span>
                   </div>
-                  <div className="text-[10px] uppercase font-mono text-slate-400">Fairness Index</div>
+
+                  <div>
+                    <div className="text-xs font-bold text-slate-200">Fairness Index</div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {report.overallScore >= 75 ? 'Balanced Terms' : report.overallScore >= 50 ? 'Moderate Exposure' : 'High Liability'}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="h-10 w-px bg-slate-800" />
@@ -152,32 +177,32 @@ export function App() {
                   <span className="text-emerald-400 font-semibold">{report.riskDistribution.standard} Fair</span>
                   <span className="text-amber-400 font-semibold">{report.riskDistribution.caution} Caution</span>
                   <span className="text-rose-400 font-semibold">{report.riskDistribution.unfavorable + report.riskDistribution.critical} Traps</span>
-                  <span className="text-slate-400">{report.wordCount} words</span>
+                  <span className="text-slate-400 font-mono">{report.wordCount} words</span>
                 </div>
               </div>
             </div>
 
-            {/* Tab 1: Audit & Gotchas */}
+            {/* Tab 1: Risk Audit & Gotchas */}
             {activeTab === 'audit' && (
-              <div className="space-y-8">
+              <div className="space-y-7">
                 {/* Gotchas Warning Cards */}
                 <GotchasSummary gotchas={report.gotchas} />
 
                 {/* Clause Breakdown with Filter Controls */}
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-brand-400" />
-                      Clause-by-Clause Risk Breakdown & Market Deviations
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      Clause-by-Clause Risk Breakdown & Market Benchmarks
                     </h3>
 
                     {/* Filter Pills */}
-                    <div className="flex items-center gap-2 self-start sm:self-auto bg-navy-900 border border-slate-800 p-1 rounded-xl">
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-950/80 border border-slate-800 p-1 rounded-xl">
                       <button
                         onClick={() => setSelectedFilter('all')}
                         className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all ${
                           selectedFilter === 'all'
-                            ? 'bg-brand-600 text-white'
+                            ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-sm'
                             : 'text-slate-400 hover:text-white'
                         }`}
                       >
@@ -187,18 +212,18 @@ export function App() {
                         onClick={() => setSelectedFilter('risky')}
                         className={`text-xs px-3 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
                           selectedFilter === 'risky'
-                            ? 'bg-rose-600 text-white'
+                            ? 'bg-rose-600 text-white shadow-sm'
                             : 'text-slate-400 hover:text-white'
                         }`}
                       >
                         <Filter className="w-3 h-3" />
-                        Flagged Risks ({report.riskDistribution.caution + report.riskDistribution.unfavorable + report.riskDistribution.critical})
+                        Flagged Exposures ({report.riskDistribution.caution + report.riskDistribution.unfavorable + report.riskDistribution.critical})
                       </button>
                     </div>
                   </div>
 
                   {/* Clause Cards List */}
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-3.5">
                     {displayedClauses.map((clause) => (
                       <ClauseCard
                         key={clause.id}
@@ -217,18 +242,19 @@ export function App() {
             {/* Tab 3: Contract Comparator */}
             {activeTab === 'compare' && <ContractCompare />}
 
-            {/* Tab 4: Compliance Checklist */}
+            {/* Tab 4: Compliance Tracker */}
             {activeTab === 'checklist' && <ComplianceChecklist items={report.checklist} />}
 
             {/* Tab 5: Attorney Brief */}
             {activeTab === 'brief' && <AttorneyBriefView brief={report.attorneyBrief} />}
 
             {/* Reset / New Audit Button */}
-            <div className="pt-6 flex justify-center">
+            <div className="pt-4 flex justify-center">
               <button
                 onClick={() => setReport(null)}
-                className="text-xs text-slate-400 hover:text-white underline"
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 underline underline-offset-4"
               >
+                <RotateCcw className="w-3 h-3" />
                 Upload or test another agreement
               </button>
             </div>
@@ -249,7 +275,7 @@ export function App() {
         onClose={() => setSelectedClauseForDraft(null)}
       />
 
-      {/* Semantic Accessible Footer Landmark */}
+      {/* Enterprise SaaS Footer Landmark */}
       <Footer />
     </div>
   );

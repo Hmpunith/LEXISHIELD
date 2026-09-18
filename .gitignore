@@ -44,3 +44,4 @@ video-generator/ffmpeg*
 
 # Video Generator tool (local only)
 video-generator/
+.vercel
