@@ -1,0 +1,74 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+
+/* Accessible Skip-Link (WCAG AA) */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  border-radius: 0.5rem;
+  z-index: 9999;
+  transition: top 0.2s ease-in-out;
+}
+
+.skip-link:focus {
+  top: 1rem;
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+/* Explicit Accessible Focus Ring */
+:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+}
+
+/* WCAG Media Query 1: Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* WCAG Media Query 2: High Contrast Preference */
+@media (prefers-contrast: high) {
+  body {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+  .card-contrast {
+    border: 2px solid #ffffff !important;
+  }
+  .badge-contrast {
+    border: 1px solid #ffffff !important;
+  }
+}
+
+/* WCAG Media Query 3: Print Optimization */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  nav, button, .no-print, header, footer {
+    display: none !important;
+  }
+  main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
