@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/app.ts",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && esbuild api/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=api/index.js --packages=external",
     "start": "node dist/server/app.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -24,6 +24,7 @@
     "lucide-react": "^1.16.0",
     "multer": "^1.4.5-lts.1",
     "pdf-parse": "^1.1.1",
+    "playwright": "^1.63.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "uuid": "^11.1.0",

@@ -1,0 +1,10 @@
+﻿node_modules/
+video-generator/
+.git/
+.env
+.env.local
+coverage/
+dist/
+*.mp4
+*.exe
+*.zip
