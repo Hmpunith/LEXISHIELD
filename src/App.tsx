@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { Navbar, NavTab } from './components/shell/Navbar';
 import { Footer } from './components/shell/Footer';
 import { SkipLink } from './components/shell/SkipLink';
@@ -8,12 +8,14 @@ import { LoadingState } from './components/shared/LoadingState';
 import { GotchasSummary } from './components/audit/GotchasSummary';
 import { ClauseCard } from './components/audit/ClauseCard';
 import { CounterDraftModal } from './components/audit/CounterDraftModal';
-import { DocumentChat } from './components/counsel/DocumentChat';
-import { ContractCompare } from './components/compare/ContractCompare';
-import { ComplianceChecklist } from './components/prep/ComplianceChecklist';
-import { AttorneyBriefView } from './components/prep/AttorneyBriefView';
 import { AuditReport, AuditedClause, DocumentType } from '../server/types/legal';
 import { Shield, Sparkles, Filter, RotateCcw } from 'lucide-react';
+
+// Dynamic code splitting for secondary tabs to minimize initial bundle footprint
+const DocumentChat = lazy(() => import('./components/counsel/DocumentChat').then((m) => ({ default: m.DocumentChat })));
+const ContractCompare = lazy(() => import('./components/compare/ContractCompare').then((m) => ({ default: m.ContractCompare })));
+const ComplianceChecklist = lazy(() => import('./components/prep/ComplianceChecklist').then((m) => ({ default: m.ComplianceChecklist })));
+const AttorneyBriefView = lazy(() => import('./components/prep/AttorneyBriefView').then((m) => ({ default: m.AttorneyBriefView })));
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('audit');
@@ -236,17 +238,20 @@ export function App() {
               </div>
             )}
 
-            {/* Tab 2: Document Counsel Q&A Chat */}
-            {activeTab === 'counsel' && <DocumentChat report={report} />}
+            {/* Secondary Lazy-Loaded Workspaces with Suspense Boundaries */}
+            <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400 font-mono animate-pulse">Initializing workspace module...</div>}>
+              {/* Tab 2: Document Counsel Q&A Chat */}
+              {activeTab === 'counsel' && <DocumentChat report={report} />}
 
-            {/* Tab 3: Contract Comparator */}
-            {activeTab === 'compare' && <ContractCompare />}
+              {/* Tab 3: Contract Comparator */}
+              {activeTab === 'compare' && <ContractCompare />}
 
-            {/* Tab 4: Compliance Tracker */}
-            {activeTab === 'checklist' && <ComplianceChecklist items={report.checklist} />}
+              {/* Tab 4: Compliance Tracker */}
+              {activeTab === 'checklist' && <ComplianceChecklist items={report.checklist} />}
 
-            {/* Tab 5: Attorney Brief */}
-            {activeTab === 'brief' && <AttorneyBriefView brief={report.attorneyBrief} />}
+              {/* Tab 5: Attorney Brief */}
+              {activeTab === 'brief' && <AttorneyBriefView brief={report.attorneyBrief} />}
+            </Suspense>
 
             {/* Reset / New Audit Button */}
             <div className="pt-4 flex justify-center">
@@ -264,7 +269,9 @@ export function App() {
         {/* If user clicks Compare tab without an uploaded document */}
         {!report && !isLoading && activeTab === 'compare' && (
           <div className="space-y-6">
-            <ContractCompare />
+            <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400 font-mono animate-pulse">Initializing Contract Comparator...</div>}>
+              <ContractCompare />
+            </Suspense>
           </div>
         )}
       </main>

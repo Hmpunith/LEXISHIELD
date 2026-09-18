@@ -1,4 +1,4 @@
-﻿import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 
 /**
@@ -17,6 +17,16 @@ export function armorMiddleware(req: Request, res: Response, next: NextFunction)
 
   // Prevent clickjacking via iframes
   res.setHeader('X-Frame-Options', 'DENY');
+
+  // Strict Transport Security (HSTS 1-year preload)
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+
+  // Legacy browser XSS filter protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Strict Cross-Origin isolation policies
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
   // Strict referrer policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

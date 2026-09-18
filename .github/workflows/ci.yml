@@ -1,0 +1,40 @@
+﻿name: LexiShield Production CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Code Quality, Security & Automated Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Security Audit
+        run: npm audit --audit-level=high
+
+      - name: Run Static Analysis & Linter
+        run: npm run lint
+
+      - name: Run TypeScript Strict Verification
+        run: npx tsc --noEmit
+
+      - name: Execute Vitest Automated Test Suite
+        run: npm test
+
+      - name: Compile Production Build Artifacts
+        run: npm run build

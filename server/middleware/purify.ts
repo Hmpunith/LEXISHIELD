@@ -1,4 +1,4 @@
-﻿import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 /**
  * Recursively sanitize strings to strip script tags, dangerous HTML, and null bytes.
@@ -17,6 +17,9 @@ function sanitizeValue(val: unknown): unknown {
   if (val !== null && typeof val === 'object') {
     const cleaned: Record<string, unknown> = {};
     for (const [key, v] of Object.entries(val as Record<string, unknown>)) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        continue; // Block prototype pollution vectors
+      }
       cleaned[key] = sanitizeValue(v);
     }
     return cleaned;
