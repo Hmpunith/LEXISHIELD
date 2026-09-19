@@ -1,0 +1,24 @@
+﻿INDEPENDENT CONSULTING AND SERVICES AGREEMENT
+
+This Agreement is entered into between Acme Corporation ("Client") and Independent Professional ("Contractor").
+
+1. PAYMENT TERMS
+Client agrees to pay Contractor invoices within sixty (60) days following verified administrative approval. Any late payments shall not accrue interest or penalties under any circumstances. Client retains the sole and absolute right to withhold payments if deliverables fail subjective design benchmarks.
+
+2. INTELLECTUAL PROPERTY RIGHTS
+Upon execution of this Agreement, Contractor assigns to Client all right, title, and interest in and to all work product, inventions, designs, know-how, and ideas conceived, developed, or reduced to practice during the term of this engagement, whether on or off Client premises.
+
+3. INDEMNIFICATION AND LIABILITIES
+Contractor shall defend, indemnify, and hold harmless Client, its officers, directors, and affiliates from and against any and all third-party claims, liabilities, losses, damages, costs, and expenses (including full attorney fees) arising directly or indirectly out of Contractor's performance of services.
+
+4. LIMITATION OF LIABILITY
+Client's maximum liability under this Agreement shall not exceed fifty dollars ($50.00). Contractor waives all claims for incidental, indirect, or consequential damages. Contractor's liability under Section 3 shall remain completely uncapped.
+
+5. NON-COMPETITION AND NON-SOLICITATION
+During the term of this Agreement and for a period of twenty-four (24) months following termination, Contractor shall not directly or indirectly provide consulting, software development, or related advisory services to any entity in North America operating in the enterprise software sector.
+
+6. TERMINATION
+Client may terminate this Agreement at any time without notice and without cause. Contractor may terminate only upon sixty (60) calendar days prior written notice. Upon termination, Client shall have no obligation to pay for incomplete milestones.
+
+7. GOVERNING LAW AND DISPUTE RESOLUTION
+This Agreement is governed by the laws of the State of Delaware. Any disputes shall be submitted to mandatory binding arbitration, with Contractor responsible for all filing fees and arbitration expenses regardless of outcome.

@@ -1,14 +1,15 @@
-﻿import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import { extractDocumentText } from '../modules/ingestion/textExtractor';
 import { splitDocumentIntoClauses } from '../modules/ingestion/clauseSplitter';
-import { auditClause } from '../modules/audit/riskAuditor';
+import { auditClausesInBatch } from '../modules/audit/riskAuditor';
 import { synthesizeGotchas } from '../modules/intelligence/gotchasSynthesizer';
 import { forgeComplianceChecklist } from '../modules/intelligence/checklistForge';
 import { buildAttorneyConsultationBrief } from '../modules/intelligence/attorneyBrief';
 import { documentStore } from '../storage/connection';
 import { MemoVault } from '../services/memoVault';
+import { CacheService } from '../services/cacheService';
 import { DocumentType, RiskLevel, AuditReport } from '../types/legal';
 import { DocumentParseFault } from '../faults/catalog';
 
@@ -77,10 +78,8 @@ router.post('/:id/analyze', async (req: Request, res: Response, next: NextFuncti
     const docType = (req.body?.documentType as DocumentType) || DocumentType.FreelanceContract;
     const parsedClauses = splitDocumentIntoClauses(doc.rawText);
 
-    // Audit each clause
-    const auditedClauses = await Promise.all(
-      parsedClauses.map((clause) => auditClause(clause, docType))
-    );
+    // High-efficiency two-stage vector audit: Stage 1 Vector Cosine + Stage 2 Batched LLM
+    const auditedClauses = await auditClausesInBatch(parsedClauses, docType);
 
     const gotchas = synthesizeGotchas(auditedClauses);
     const checklist = forgeComplianceChecklist(auditedClauses);
@@ -117,6 +116,7 @@ router.post('/:id/analyze', async (req: Request, res: Response, next: NextFuncti
 
     documentStore.saveAudit(docId, report);
     MemoVault.set(cacheKey, report);
+    CacheService.set(cacheKey, report, 86400);
 
     res.json({
       success: true,

@@ -1,15 +1,16 @@
 import { RiskLevel, AuditedClause, ParsedClause, DocumentType } from '../../types/legal';
 import { findNearestBenchmark } from '../benchmark/matcher';
-import { askGeminiJson } from '../../services/geminiService';
+import { askGeminiJson, batchEvaluateClauses, BatchClauseInput, BatchClauseOutput } from '../../services/geminiService';
 
 export function evaluateHeuristicRisk(clause: ParsedClause): { riskLevel: RiskLevel; riskScore: number; reason: string } {
   const text = clause.text.toLowerCase();
 
   // Critical indicators: Unilateral uncapped indemnity
+  const isTrulyMutual = text.includes('mutual') && !text.includes('without mutual') && !text.includes('non-mutual');
   if (
     text.includes('indemnif') &&
-    !text.includes('mutual') &&
-    (text.includes('unlimited') || text.includes('any and all claims') || !text.includes('gross negligence'))
+    !isTrulyMutual &&
+    (text.includes('unlimited') || text.includes('any and all') || !text.includes('gross negligence'))
   ) {
     return {
       riskLevel: RiskLevel.Critical,
@@ -20,8 +21,8 @@ export function evaluateHeuristicRisk(clause: ParsedClause): { riskLevel: RiskLe
 
   // Critical indicators: Restrictive non-compete
   if (
-    (text.includes('non-compete') || /not\s+engage\s+in\s+any.*business/i.test(text) || text.includes('competitive business')) &&
-    (text.includes('worldwide') || text.includes('perpetual') || text.includes('two (2) years') || text.includes('3 years') || text.includes('24 months'))
+    (text.includes('non-compete') || /not\s+engage\s+in/i.test(text) || text.includes('competitive') || text.includes('non-solicit')) &&
+    (text.includes('worldwide') || text.includes('perpetual') || text.includes('two (2) years') || text.includes('3 years') || text.includes('24 months') || text.includes('twenty-four') || text.includes('north america'))
   ) {
     return {
       riskLevel: RiskLevel.Critical,
@@ -67,6 +68,9 @@ export function evaluateHeuristicRisk(clause: ParsedClause): { riskLevel: RiskLe
   };
 }
 
+/**
+ * Single clause auditor (retained for backward compatibility and focused unit tests)
+ */
 export async function auditClause(clause: ParsedClause, docType: DocumentType): Promise<AuditedClause> {
   const { benchmark, similarity } = findNearestBenchmark(clause.text, clause.clauseType, docType);
   const heuristic = evaluateHeuristicRisk(clause);
@@ -121,4 +125,93 @@ export async function auditClause(clause: ParsedClause, docType: DocumentType): 
     deviationAnalysis: (aiResult as any).deviationAnalysis || fallbackData.deviationAnalysis,
     counterProposal: (aiResult as any).counterProposal || fallbackData.counterProposal,
   };
+}
+
+/**
+ * High-performance batched multi-clause auditor:
+ * Stage 1: Fast vector cosine similarity matching against market benchmarks.
+ * Stage 2: Batches non-standard or flagged clauses into a SINGLE Gemini LLM call.
+ * Standard boilerplate clauses with high benchmark parity skip unnecessary LLM evaluation.
+ */
+export async function auditClausesInBatch(
+  clauses: ParsedClause[],
+  docType: DocumentType
+): Promise<AuditedClause[]> {
+  if (clauses.length === 0) {return [];}
+
+  // Stage 1: Vector matching and heuristic risk triage
+  const prepared = clauses.map((clause, idx) => {
+    const { benchmark, similarity } = findNearestBenchmark(clause.text, clause.clauseType, docType);
+    const heuristic = evaluateHeuristicRisk(clause);
+    return {
+      index: idx,
+      clause,
+      benchmark,
+      similarity,
+      heuristic,
+    };
+  });
+
+  // Filter clauses requiring deeper AI semantic delta analysis
+  // Standard boilerplate clauses with similarity >= 0.85 and standard heuristic skip LLM
+  const clausesNeedingAI: BatchClauseInput[] = [];
+  for (const item of prepared) {
+    const isStandardHighMatch = item.similarity >= 0.85 && item.heuristic.riskLevel === RiskLevel.Standard;
+    if (!isStandardHighMatch) {
+      clausesNeedingAI.push({
+        index: item.index,
+        clauseType: item.clause.clauseType,
+        clauseText: item.clause.text,
+        benchmarkText: item.benchmark.benchmarkText,
+      });
+    }
+  }
+
+  // Fallback generator for batch
+  const createFallback = (c: BatchClauseInput): BatchClauseOutput => {
+    const prep = prepared[c.index];
+    return {
+      index: c.index,
+      plainEnglishSummary: prep.heuristic.reason,
+      deviationAnalysis: `Compared to ${prep.benchmark.sourceAttribution}, this clause aligns with a ${(prep.similarity * 100).toFixed(0)}% benchmark index. ${prep.heuristic.reason}`,
+      riskLevel: prep.heuristic.riskLevel,
+      riskScore: prep.heuristic.riskScore,
+      counterProposal: prep.heuristic.riskLevel !== RiskLevel.Standard ? {
+        proposedClause: prep.benchmark.benchmarkText,
+        rationale: `Adopt the verified fair-market benchmark standard from ${prep.benchmark.sourceAttribution}.`,
+        negotiationStrategy: 'Propose this reciprocal language during initial contract mark-up.',
+      } : undefined,
+    };
+  };
+
+  // Stage 2: Batched Gemini call for all candidate clauses
+  const aiResultsMap = clausesNeedingAI.length > 0
+    ? await batchEvaluateClauses(clausesNeedingAI, createFallback)
+    : new Map<number, BatchClauseOutput>();
+
+  // Assemble final audited clauses
+  return prepared.map((item) => {
+    const aiOutput = aiResultsMap.get(item.index);
+    const riskLevel = (aiOutput?.riskLevel as RiskLevel) || item.heuristic.riskLevel;
+    const riskScore = aiOutput?.riskScore ?? item.heuristic.riskScore;
+    const summary = aiOutput?.plainEnglishSummary || item.heuristic.reason;
+    const deviation = aiOutput?.deviationAnalysis || `Similarity index ${(item.similarity * 100).toFixed(0)}% against ${item.benchmark.sourceAttribution}.`;
+    const counter = aiOutput?.counterProposal || (riskLevel !== RiskLevel.Standard ? {
+      proposedClause: item.benchmark.benchmarkText,
+      rationale: `Replace one-sided language with fair-market standard from ${item.benchmark.sourceAttribution}.`,
+      negotiationStrategy: 'Request this balanced phrasing before signing.',
+    } : undefined);
+
+    return {
+      ...item.clause,
+      riskLevel,
+      riskScore,
+      similarityToBenchmark: item.similarity,
+      matchedBenchmarkId: item.benchmark.id,
+      matchedBenchmarkText: item.benchmark.benchmarkText,
+      plainEnglishSummary: summary,
+      deviationAnalysis: deviation,
+      counterProposal: counter,
+    };
+  });
 }

@@ -525,38 +525,84 @@ var MARKET_BENCHMARKS = [
   }
 ];
 
-// server/modules/benchmark/matcher.ts
-function calculateJaccardSimilarity(textA, textB) {
-  const tokenize = (s) => new Set(
-    s.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).filter((w) => w.length > 2)
-  );
-  const setA = tokenize(textA);
-  const setB = tokenize(textB);
-  if (setA.size === 0 || setB.size === 0) {
-    return 0;
+// server/modules/scoring/vectorScorer.ts
+var VectorScorer = class {
+  /**
+   * Tokenizes text into normalized word tokens
+   */
+  static tokenize(text) {
+    return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2);
   }
-  let intersection = 0;
-  for (const word of setA) {
-    if (setB.has(word)) {
-      intersection++;
+  /**
+   * Generates n-gram frequency vector
+   */
+  static vectorize(tokens) {
+    const vector = /* @__PURE__ */ new Map();
+    for (const token of tokens) {
+      vector.set(token, (vector.get(token) || 0) + 1);
     }
+    return vector;
   }
-  const union = setA.size + setB.size - intersection;
-  return union > 0 ? intersection / union : 0;
-}
+  /**
+   * Computes cosine similarity between two text passages: (A · B) / (||A|| * ||B||)
+   * Returns a score between 0.0 (no similarity) and 1.0 (exact match).
+   */
+  static calculateCosineSimilarity(textA, textB) {
+    const tokensA = this.tokenize(textA);
+    const tokensB = this.tokenize(textB);
+    if (tokensA.length === 0 || tokensB.length === 0) {
+      return 0;
+    }
+    const vecA = this.vectorize(tokensA);
+    const vecB = this.vectorize(tokensB);
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    for (const count of vecA.values()) {
+      normA += count * count;
+    }
+    for (const count of vecB.values()) {
+      normB += count * count;
+    }
+    normA = Math.sqrt(normA);
+    normB = Math.sqrt(normB);
+    if (normA === 0 || normB === 0) {
+      return 0;
+    }
+    for (const [term, countA] of vecA.entries()) {
+      const countB = vecB.get(term);
+      if (countB) {
+        dotProduct += countA * countB;
+      }
+    }
+    const similarity = dotProduct / (normA * normB);
+    return Math.min(1, Math.max(0, Number(similarity.toFixed(4))));
+  }
+  /**
+   * Batch scores a candidate clause against an array of benchmarks
+   */
+  static rankBenchmarks(clauseText, benchmarks) {
+    return benchmarks.map((b) => ({
+      item: b,
+      similarity: this.calculateCosineSimilarity(clauseText, b.standardClause)
+    })).sort((a, b) => b.similarity - a.similarity);
+  }
+};
+
+// server/modules/benchmark/matcher.ts
 function findNearestBenchmark(clauseText, clauseType, _docType = "general_agreement" /* GeneralAgreement */) {
   const typeMatches = MARKET_BENCHMARKS.filter((b) => b.clauseType === clauseType);
   const pool = typeMatches.length > 0 ? typeMatches : MARKET_BENCHMARKS;
   let bestMatch = pool[0];
   let highestSimilarity = -1;
   for (const bm of pool) {
-    const sim = calculateJaccardSimilarity(clauseText, bm.benchmarkText);
+    const sim = VectorScorer.calculateCosineSimilarity(clauseText, bm.benchmarkText);
     if (sim > highestSimilarity) {
       highestSimilarity = sim;
       bestMatch = bm;
     }
   }
-  const normalized = Math.min(0.95, Math.max(0.35, Math.round(highestSimilarity * 100) / 100 + 0.3));
+  const normalized = Math.min(0.95, Math.max(0.35, Math.round(highestSimilarity * 100) / 100 + 0.35));
   return {
     benchmark: bestMatch,
     similarity: normalized
@@ -567,6 +613,7 @@ function findNearestBenchmark(clauseText, clauseType, _docType = "general_agreem
 import { GoogleGenerativeAI } from "@google/generative-ai";
 var DISCLAIMER = "IMPORTANT LEGAL NOTICE: You are an educational legal information assistant. Your output is for informational and educational purposes only and does NOT constitute legal advice, representation, or attorney-client privilege. Emphasize that users should consult a qualified legal professional.";
 var CANDIDATE_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+var activeModelIndex = 0;
 var genAIClient = null;
 function getClient() {
   const config = getConfig();
@@ -578,9 +625,12 @@ function getClient() {
   }
   return genAIClient;
 }
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 async function askGeminiJson(systemPrompt, userPrompt, fallbackGenerator) {
   const client = getClient();
-  if (!client) {
+  if (!client || process.env.NODE_ENV === "test") {
     return fallbackGenerator();
   }
   const fullSystem = `${systemPrompt}
@@ -588,38 +638,134 @@ async function askGeminiJson(systemPrompt, userPrompt, fallbackGenerator) {
 ${DISCLAIMER}
 
 Return strictly valid JSON only.`;
-  for (const modelName of CANDIDATE_MODELS) {
-    try {
-      const model = client.getGenerativeModel({
-        model: modelName,
-        systemInstruction: fullSystem,
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.2
+  for (let m = 0; m < CANDIDATE_MODELS.length; m++) {
+    const modelName = CANDIDATE_MODELS[(activeModelIndex + m) % CANDIDATE_MODELS.length];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const model = client.getGenerativeModel({
+          model: modelName,
+          systemInstruction: fullSystem,
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2
+          }
+        });
+        const result = await model.generateContent(userPrompt);
+        const rawText = result.response.text();
+        const cleaned = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        return JSON.parse(cleaned);
+      } catch (err) {
+        const msg = err?.message || "";
+        const isTransient = msg.includes("429") || msg.includes("503") || msg.includes("quota") || msg.includes("ResourceExhausted");
+        if (isTransient && attempt === 0) {
+          console.warn(`[Gemini] ${modelName} transient rate limit, retrying in 1.5s...`);
+          await sleep(1500);
+          continue;
         }
-      });
-      const result = await model.generateContent(userPrompt);
-      const rawText = result.response.text();
-      const cleaned = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-      return JSON.parse(cleaned);
-    } catch (err) {
-      console.warn(`[Gemini] Model ${modelName} call notice: ${err.message}. Trying next candidate or fallback...`);
+        console.warn(`[Gemini] Model ${modelName} notice: ${msg.slice(0, 100)}. Switching candidate...`);
+        break;
+      }
     }
   }
   return fallbackGenerator();
+}
+async function batchEvaluateClauses(clauses, fallbackGenerator) {
+  const resultsMap = /* @__PURE__ */ new Map();
+  if (clauses.length === 0) {
+    return resultsMap;
+  }
+  const client = getClient();
+  if (!client || process.env.NODE_ENV === "test") {
+    for (const c of clauses) {
+      resultsMap.set(c.index, fallbackGenerator(c));
+    }
+    return resultsMap;
+  }
+  const systemPrompt = `You are a senior contract auditing attorney. ${DISCLAIMER}
+You analyze multiple contract clauses against fair market benchmarks in a single batch.
+For each clause, evaluate directional legal variance, unilateral obligations, and risk severity.
+Respond with a JSON array of objects:
+[
+  {
+    "index": number (matching the input clause index),
+    "riskLevel": "Standard" | "Caution" | "Unfavorable" | "Critical",
+    "riskScore": number (0 to 100),
+    "plainEnglishSummary": "2-sentence plain-language summary of signer impact",
+    "deviationAnalysis": "How the clause deviates from the fair-market benchmark",
+    "counterProposal": {
+      "proposedClause": "Balanced replacement clause language",
+      "rationale": "Why this revision balances the contract",
+      "negotiationStrategy": "Practical negotiation tip"
+    }
+  }
+]`;
+  const userPrompt = clauses.map((c) => `---
+CLAUSE INDEX: ${c.index}
+CLAUSE TYPE: ${c.clauseType}
+CONTRACT TEXT:
+"${c.clauseText}"
+
+MARKET BENCHMARK:
+"${c.benchmarkText}"`).join("\n\n");
+  for (let m = 0; m < CANDIDATE_MODELS.length; m++) {
+    const modelName = CANDIDATE_MODELS[(activeModelIndex + m) % CANDIDATE_MODELS.length];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const model = client.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemPrompt,
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+            maxOutputTokens: 4096
+          }
+        });
+        const response = await model.generateContent(userPrompt);
+        const rawText = response.response.text();
+        const cleaned = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        for (const item of parsed) {
+          if (typeof item.index === "number") {
+            resultsMap.set(item.index, item);
+          }
+        }
+        for (const c of clauses) {
+          if (!resultsMap.has(c.index)) {
+            resultsMap.set(c.index, fallbackGenerator(c));
+          }
+        }
+        return resultsMap;
+      } catch (err) {
+        const msg = err?.message || "";
+        const isTransient = msg.includes("429") || msg.includes("503") || msg.includes("quota") || msg.includes("ResourceExhausted");
+        if (isTransient && attempt === 0) {
+          console.warn(`[Gemini-Batch] Rate limit on ${modelName}, retrying in 2s...`);
+          await sleep(2e3);
+          continue;
+        }
+        console.warn(`[Gemini-Batch] ${modelName} failed (${msg.slice(0, 100)}). Trying next candidate...`);
+        break;
+      }
+    }
+  }
+  for (const c of clauses) {
+    resultsMap.set(c.index, fallbackGenerator(c));
+  }
+  return resultsMap;
 }
 
 // server/modules/audit/riskAuditor.ts
 function evaluateHeuristicRisk(clause) {
   const text = clause.text.toLowerCase();
-  if (text.includes("indemnif") && !text.includes("mutual") && (text.includes("unlimited") || text.includes("any and all claims") || !text.includes("gross negligence"))) {
+  const isTrulyMutual = text.includes("mutual") && !text.includes("without mutual") && !text.includes("non-mutual");
+  if (text.includes("indemnif") && !isTrulyMutual && (text.includes("unlimited") || text.includes("any and all") || !text.includes("gross negligence"))) {
     return {
       riskLevel: "Critical" /* Critical */,
       riskScore: 92,
       reason: "Unilateral, uncapped indemnification exposing you to third-party liabilities without reciprocal protection."
     };
   }
-  if ((text.includes("non-compete") || /not\s+engage\s+in\s+any.*business/i.test(text) || text.includes("competitive business")) && (text.includes("worldwide") || text.includes("perpetual") || text.includes("two (2) years") || text.includes("3 years") || text.includes("24 months"))) {
+  if ((text.includes("non-compete") || /not\s+engage\s+in/i.test(text) || text.includes("competitive") || text.includes("non-solicit")) && (text.includes("worldwide") || text.includes("perpetual") || text.includes("two (2) years") || text.includes("3 years") || text.includes("24 months") || text.includes("twenty-four") || text.includes("north america"))) {
     return {
       riskLevel: "Critical" /* Critical */,
       riskScore: 95,
@@ -646,56 +792,72 @@ function evaluateHeuristicRisk(clause) {
     reason: "Aligns closely with market-standard legal norms and bilateral protections."
   };
 }
-async function auditClause(clause, docType) {
-  const { benchmark, similarity } = findNearestBenchmark(clause.text, clause.clauseType, docType);
-  const heuristic = evaluateHeuristicRisk(clause);
-  const fallbackData = {
-    plainEnglishSummary: heuristic.reason,
-    deviationAnalysis: `Compared to ${benchmark.sourceAttribution}, this clause has a similarity index of ${(similarity * 100).toFixed(0)}%. ${heuristic.reason}`,
-    counterProposal: heuristic.riskLevel !== "Standard" /* Standard */ ? {
-      proposedClause: benchmark.benchmarkText,
-      rationale: `Replace one-sided language with the established fair-market standard from ${benchmark.sourceAttribution}.`,
-      negotiationStrategy: "Request this balanced phrasing during the initial contract mark-up phase before signing."
-    } : void 0
+async function auditClausesInBatch(clauses, docType) {
+  if (clauses.length === 0) {
+    return [];
+  }
+  const prepared = clauses.map((clause, idx) => {
+    const { benchmark, similarity } = findNearestBenchmark(clause.text, clause.clauseType, docType);
+    const heuristic = evaluateHeuristicRisk(clause);
+    return {
+      index: idx,
+      clause,
+      benchmark,
+      similarity,
+      heuristic
+    };
+  });
+  const clausesNeedingAI = [];
+  for (const item of prepared) {
+    const isStandardHighMatch = item.similarity >= 0.85 && item.heuristic.riskLevel === "Standard" /* Standard */;
+    if (!isStandardHighMatch) {
+      clausesNeedingAI.push({
+        index: item.index,
+        clauseType: item.clause.clauseType,
+        clauseText: item.clause.text,
+        benchmarkText: item.benchmark.benchmarkText
+      });
+    }
+  }
+  const createFallback = (c) => {
+    const prep = prepared[c.index];
+    return {
+      index: c.index,
+      plainEnglishSummary: prep.heuristic.reason,
+      deviationAnalysis: `Compared to ${prep.benchmark.sourceAttribution}, this clause aligns with a ${(prep.similarity * 100).toFixed(0)}% benchmark index. ${prep.heuristic.reason}`,
+      riskLevel: prep.heuristic.riskLevel,
+      riskScore: prep.heuristic.riskScore,
+      counterProposal: prep.heuristic.riskLevel !== "Standard" /* Standard */ ? {
+        proposedClause: prep.benchmark.benchmarkText,
+        rationale: `Adopt the verified fair-market benchmark standard from ${prep.benchmark.sourceAttribution}.`,
+        negotiationStrategy: "Propose this reciprocal language during initial contract mark-up."
+      } : void 0
+    };
   };
-  const aiResult = await askGeminiJson(
-    "You are a senior contract auditing attorney. Analyze legal risk accurately.",
-    `Analyze this contract clause against the fair market standard benchmark:
-    
-    CLAUSE TYPE: ${clause.clauseType}
-    UPLOADED CLAUSE TEXT:
-    "${clause.text}"
-    
-    MARKET BENCHMARK STANDARD:
-    "${benchmark.benchmarkText}"
-    
-    Provide a JSON object with:
-    {
-      "plainEnglishSummary": "2-sentence plain-English breakdown of what this clause means for the signer",
-      "deviationAnalysis": "How it deviates from fair market standards",
-      "riskLevel": "Standard" | "Caution" | "Unfavorable" | "Critical",
-      "riskScore": number from 0 to 100,
-      "counterProposal": {
-        "proposedClause": "Fair revised clause language",
-        "rationale": "Legal reasoning",
-        "negotiationStrategy": "Tactical email tip"
-      }
-    }`,
-    () => fallbackData
-  );
-  const finalRiskLevel = aiResult.riskLevel || heuristic.riskLevel;
-  const finalRiskScore = aiResult.riskScore || heuristic.riskScore;
-  return {
-    ...clause,
-    riskLevel: finalRiskLevel,
-    riskScore: finalRiskScore,
-    similarityToBenchmark: similarity,
-    matchedBenchmarkId: benchmark.id,
-    matchedBenchmarkText: benchmark.benchmarkText,
-    plainEnglishSummary: aiResult.plainEnglishSummary || fallbackData.plainEnglishSummary,
-    deviationAnalysis: aiResult.deviationAnalysis || fallbackData.deviationAnalysis,
-    counterProposal: aiResult.counterProposal || fallbackData.counterProposal
-  };
+  const aiResultsMap = clausesNeedingAI.length > 0 ? await batchEvaluateClauses(clausesNeedingAI, createFallback) : /* @__PURE__ */ new Map();
+  return prepared.map((item) => {
+    const aiOutput = aiResultsMap.get(item.index);
+    const riskLevel = aiOutput?.riskLevel || item.heuristic.riskLevel;
+    const riskScore = aiOutput?.riskScore ?? item.heuristic.riskScore;
+    const summary = aiOutput?.plainEnglishSummary || item.heuristic.reason;
+    const deviation = aiOutput?.deviationAnalysis || `Similarity index ${(item.similarity * 100).toFixed(0)}% against ${item.benchmark.sourceAttribution}.`;
+    const counter = aiOutput?.counterProposal || (riskLevel !== "Standard" /* Standard */ ? {
+      proposedClause: item.benchmark.benchmarkText,
+      rationale: `Replace one-sided language with fair-market standard from ${item.benchmark.sourceAttribution}.`,
+      negotiationStrategy: "Request this balanced phrasing before signing."
+    } : void 0);
+    return {
+      ...item.clause,
+      riskLevel,
+      riskScore,
+      similarityToBenchmark: item.similarity,
+      matchedBenchmarkId: item.benchmark.id,
+      matchedBenchmarkText: item.benchmark.benchmarkText,
+      plainEnglishSummary: summary,
+      deviationAnalysis: deviation,
+      counterProposal: counter
+    };
+  });
 }
 
 // server/modules/intelligence/gotchasSynthesizer.ts
@@ -919,9 +1081,7 @@ router.post("/:id/analyze", async (req, res, next) => {
     }
     const docType = req.body?.documentType || "freelance_contract" /* FreelanceContract */;
     const parsedClauses = splitDocumentIntoClauses(doc.rawText);
-    const auditedClauses = await Promise.all(
-      parsedClauses.map((clause) => auditClause(clause, docType))
-    );
+    const auditedClauses = await auditClausesInBatch(parsedClauses, docType);
     const gotchas = synthesizeGotchas(auditedClauses);
     const checklist = forgeComplianceChecklist(auditedClauses);
     const attorneyBrief = buildAttorneyConsultationBrief(auditedClauses, docType, doc.filename);
@@ -950,6 +1110,7 @@ router.post("/:id/analyze", async (req, res, next) => {
     };
     documentStore.saveAudit(docId, report);
     MemoVault.set(cacheKey, report);
+    CacheService.set(cacheKey, report, 86400);
     res.json({
       success: true,
       report,
