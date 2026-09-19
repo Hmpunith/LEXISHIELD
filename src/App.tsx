@@ -239,7 +239,7 @@ export function App() {
             )}
 
             {/* Secondary Lazy-Loaded Workspaces with Suspense Boundaries */}
-            <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400 font-mono animate-pulse">Initializing workspace module...</div>}>
+            <Suspense fallback={<div role="status" aria-live="polite" className="p-12 text-center text-xs text-slate-300 font-mono animate-pulse">Initializing workspace module...</div>}>
               {/* Tab 2: Document Counsel Q&A Chat */}
               {activeTab === 'counsel' && <DocumentChat report={report} />}
 
@@ -269,7 +269,7 @@ export function App() {
         {/* If user clicks Compare tab without an uploaded document */}
         {!report && !isLoading && activeTab === 'compare' && (
           <div className="space-y-6">
-            <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400 font-mono animate-pulse">Initializing Contract Comparator...</div>}>
+            <Suspense fallback={<div role="status" aria-live="polite" className="p-12 text-center text-xs text-slate-300 font-mono animate-pulse">Initializing Contract Comparator...</div>}>
               <ContractCompare />
             </Suspense>
           </div>

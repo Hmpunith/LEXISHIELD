@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Shield, FileSearch, MessageSquareText, GitCompare, CheckSquare, Briefcase, Sparkles } from 'lucide-react';
 
 export type NavTab = 'audit' | 'counsel' | 'compare' | 'checklist' | 'brief';
@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, hasAnaly
         </div>
 
         {/* Navigation Landmark & Segmented Tab Switcher */}
-        <nav role="navigation" aria-label="Primary Workspace Navigation" className="flex items-center gap-1 bg-slate-950/70 p-1.5 rounded-xl border border-slate-800/80">
+        <nav role="tablist" aria-label="Primary Workspace Navigation" className="flex items-center gap-1 bg-slate-950/70 p-1.5 rounded-xl border border-slate-800/80">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const isDisabled = tab.requiresDoc && !hasAnalyzedDoc;
@@ -46,13 +46,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, hasAnaly
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-label={tab.label}
+                aria-selected={isActive}
                 onClick={() => {
                   if (!isDisabled) {
                     onSelectTab(tab.id);
                   }
                 }}
                 disabled={isDisabled}
-                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
                   isActive
                     ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md shadow-cyan-500/20 font-bold'
