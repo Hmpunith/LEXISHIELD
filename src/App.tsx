@@ -51,7 +51,7 @@ export function App() {
       const analyzeRes = await fetch(`/api/audit/${uploadData.documentId}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentType: docType }),
+        body: JSON.stringify({ documentType: docType, rawText: text, filename }),
       });
       const analyzeData = await analyzeRes.json();
 

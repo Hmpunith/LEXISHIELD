@@ -42,7 +42,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     }
 
     const docId = `doc-${crypto.randomUUID()}`;
-    documentStore.saveDocument(docId, filename, rawText);
+    const savedDoc = documentStore.saveDocument(docId, filename, rawText);
+    CacheService.set(`doc:${docId}`, savedDoc, 3600);
 
     res.status(201).json({
       success: true,
@@ -61,7 +62,16 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 router.post('/:id/analyze', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const docId = getParamId(req);
-    const doc = documentStore.getDocument(docId);
+    let doc = documentStore.getDocument(docId);
+    if (!doc) {
+      doc = CacheService.get<any>(`doc:${docId}`);
+    }
+    if (!doc) {
+      const fallbackText = req.body?.rawText || req.body?.text;
+      if (fallbackText && typeof fallbackText === 'string') {
+        doc = documentStore.saveDocument(docId, req.body.filename || 'contract.txt', fallbackText);
+      }
+    }
 
     if (!doc) {
       throw new DocumentParseFault(`Document ID '${docId}' not found or session expired.`);
